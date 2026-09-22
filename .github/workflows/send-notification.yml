@@ -8,17 +8,15 @@ on:
   
     branches: [main]
     
-    paths:
+    paths: [notification.json]
     
-      - notification.json
-      
   workflow_dispatch:
   
     inputs:
     
       dry_run:
       
-        description: "Validar autenticacao e payload sem enviar"
+        description: Validar autenticacao e payload sem enviar
         
         required: false
         
@@ -42,24 +40,20 @@ jobs:
     
     steps:
     
-      - name: Baixar o manifesto da notificacao
+      - uses: actions/checkout@v4
       
-        uses: actions/checkout@v4
+      - name: Autenticar no Google Cloud e gerar token FCM
+      
+        id: auth
         
-      - name: Autenticar no Google Cloud
-      
         uses: google-github-actions/auth@v2
         
         with:
         
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}'
           
-      - name: Obter token FCM
-      
-        id: access-token
-        
-        uses: google-github-actions/get-access-token@v2
-        
+          token_format: access_token
+          
       - name: Montar payload FCM
       
         run: |
@@ -70,7 +64,7 @@ jobs:
           
           message="$(jq -r '.message // empty' notification.json)"
           
-          title="$(jq -r '.title // "Cubo Magico 7D"' notification.json)"
+          title="$(jq -r '.title // \"Cubo Magico 7D\"' notification.json)"
           
           id="$(jq -r '.id // .sentAt // empty' notification.json)"
           
@@ -84,26 +78,17 @@ jobs:
         
         env:
         
-          ACCESS_TOKEN: ${{ steps.access-token.outputs.token }}
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           
           FIREBASE_PROJECT_ID: cubo-magico-7d-push-2026
           
-        run: |
+        run: curl --fail-with-body --silent --show-error -X POST -H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json; UTF-8" "https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send" --data-binary @/tmp/fcm-payload.json
         
-          curl --fail-with-body --silent --show-error -X POST -H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json; UTF-8" "https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send" --data-binary @/tmp/fcm-payload.json
-          
       - name: Confirmar dry-run
       
         if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
         
-        run: echo "Dry-run concluido; nenhum dispositivo foi notificado."
-        
-
-
-
-
-
-
+        run: echo Dry-run concluido; nenhum dispositivo foi notificado.
 
 
 
