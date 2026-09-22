@@ -1,8 +1,21 @@
 {
-  "versionCode": 32,
-  "versionName": "3.5",
-  "version": "3.5",
-  "apkUrl": "https:\/\/github.com\/Ninja28032024\/cubo-magico-releases\/releases\/download\/v3.5\/CuboMagico7D-v3.apk",
-  "notes": "Atualização do Cubo Mágico 7D.",
+  
+  "versionCode": 33,
+  
+  "versionName": "3.7",
+  
+  "version": "3.7",
+  
+  "apkUrl": "https://github.com/Ninja28032024/cubo-magico-releases/releases/download/v3.7/CuboMagico7D-v3.7.apk",
+  
+  "notes": "Correção de assinatura para permitir a atualização sem conflito de pacote.",
+  
   "mandatory": false
+  
 }
+
+
+
+
+
+
