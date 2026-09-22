@@ -1,0 +1,146 @@
+name: Enviar notificacao FCM
+
+
+
+on:
+
+  push:
+  
+    branches: [main]
+    
+    paths:
+    
+      - notification.json
+      
+  workflow_dispatch:
+  
+
+
+permissions:
+
+  contents: read
+  
+
+
+jobs:
+
+  send-fcm:
+  
+    runs-on: ubuntu-latest
+    
+    steps:
+    
+      - name: Baixar o manifesto da notificacao
+      
+        uses: actions/checkout@v4
+        
+
+
+      - name: Autenticar no Google Cloud
+      
+        uses: google-github-actions/auth@v2
+        
+        with:
+        
+          credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}'
+          
+
+
+      - name: Obter token FCM
+      
+        id: access-token
+        
+        uses: google-github-actions/get-access-token@v2
+        
+
+
+      - name: Enviar notificacao para todos os dispositivos
+      
+        env:
+        
+          ACCESS_TOKEN: ${{ steps.access-token.outputs.token }}
+          
+          FIREBASE_PROJECT_ID: cubo-magico-7d-push-2026
+          
+        run: |
+        
+          set -euo pipefail
+          
+          test -s notification.json
+          
+          message="$(jq -r '.message // empty' notification.json)"
+          
+          title="$(jq -r '.title // "Cubo Mágico 7D"' notification.json)"
+          
+          notification_id="$(jq -r '.id // .sentAt // empty' notification.json)"
+          
+          test -n "$message"
+          
+          test -n "$notification_id"
+          
+          jq -n \
+          
+            --arg title "$title" \
+            
+            --arg body "$message" \
+            
+            --arg id "$notification_id" \
+            
+            '{message:{topic:"cubo_magico_todos",notification:{title:$title,body:$body},data:{notification_id:$id}}}' \
+            
+            > /tmp/fcm-payload.json
+            
+          curl --fail-with-body --silent --show-error \
+          
+            -X POST \
+            
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            
+            -H "Content-Type: application/json; UTF-8" \
+            
+            "https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send" \
+            
+            --data-binary @/tmp/fcm-payload.json
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
