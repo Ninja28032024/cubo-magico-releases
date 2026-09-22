@@ -6,8 +6,10 @@ on:
 
   push:
   
-    branches: [main]
+    branches:
     
+      - main
+      
     paths:
     
       - notification.json
@@ -18,7 +20,7 @@ on:
     
       dry_run:
       
-        description: "Validar autenticacao e payload sem enviar"
+        description: Validar autenticacao e payload sem enviar
         
         required: false
         
@@ -42,11 +44,9 @@ jobs:
     
     steps:
     
-      - name: Baixar o manifesto da notificacao
+      - uses: actions/checkout@v4
       
-        uses: actions/checkout@v4
-        
-      - name: Autenticar no Google Cloud e gerar token FCM
+      - name: Autenticar no Google Cloud
       
         id: auth
         
@@ -58,13 +58,11 @@ jobs:
           
           token_format: access_token
           
-      - name: Montar payload FCM
+      - name: Montar e validar payload
       
         run: |
         
           set -euo pipefail
-          
-          test -s notification.json
           
           message="$(jq -r '.message // empty' notification.json)"
           
@@ -76,23 +74,11 @@ jobs:
           
           test -n "$notification_id"
           
-          jq -n \
-          
-            --arg title "$title" \
-            
-            --arg body "$message" \
-            
-            --arg id "$notification_id" \
-            
-            '{message:{topic:"cubo_magico_todos",notification:{title:$title,body:$body},data:{notification_id:$id}}}' \
-            
-            > /tmp/fcm-payload.json
-            
-          jq -e '.message.topic and .message.notification.body and .message.data.notification_id' /tmp/fcm-payload.json >/dev/null
+          jq -n --arg title "$title" --arg body "$message" --arg id "$notification_id" '{message:{topic:"cubo_magico_todos",notification:{title:$title,body:$body},data:{notification_id:$id}}}' > /tmp/fcm-payload.json
           
       - name: Enviar notificacao para todos os dispositivos
       
-        if: github.event_name == 'push' || inputs.dry_run != true
+        if: ${{ github.event_name == 'push' || inputs.dry_run != true }}
         
         env:
         
@@ -104,35 +90,13 @@ jobs:
         
           set -euo pipefail
           
-          curl --fail-with-body --silent --show-error \
+          curl --fail-with-body --silent --show-error -X POST -H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json; UTF-8" "https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send" --data-binary @/tmp/fcm-payload.json
           
-            -X POST \
-            
-            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-            
-            -H "Content-Type: application/json; UTF-8" \
-            
-            "https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send" \
-            
-            --data-binary @/tmp/fcm-payload.json
-            
       - name: Confirmar dry-run
       
-        if: github.event_name == 'workflow_dispatch' && inputs.dry_run == true
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
         
-        run: echo "Dry-run concluido: autenticacao e payload validados; nenhum dispositivo foi notificado."
-
-
-
-
-
-
-
-
-
-
-
-
+        run: echo "Dry-run concluido; nenhum dispositivo foi notificado."
 
 
 
